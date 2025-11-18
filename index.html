@@ -8,40 +8,36 @@
 body {
   font-family: Arial, sans-serif;
   padding: 20px;
-  background: #f4f4f4;
+  background: #f5f5f5;
 }
 table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 15px;
   background: white;
 }
 th, td {
-  padding: 8px;
   border: 1px solid #ccc;
+  padding: 8px;
   text-align: center;
 }
 input {
   width: 80px;
+  padding: 4px;
 }
 button {
-  padding: 5px 10px;
-  margin: 2px;
-  cursor: pointer;
-}
-#addRowBtn {
-  padding: 10px 15px;
-  background: green;
-  color: white;
+  padding: 6px 10px;
   border: none;
-  margin-bottom: 10px;
-  border-radius: 5px;
+  cursor: pointer;
+  border-radius: 4px;
 }
-.deleteBtn { background: red; color: white; border: none; }
-.editBtn { background: blue; color: white; border: none; }
+.addBtn { background: green; color: white; margin-bottom: 10px; }
+.editBtn { background: #007bff; color: white; }
+.saveBtn { background: #28a745; color: white; }
+.cancelBtn { background: orange; color: white; }
+.deleteBtn { background: red; color: white; }
 .totalBox {
   background: white;
-  padding: 10px;
+  padding: 15px;
   margin-top: 20px;
   border-radius: 6px;
 }
@@ -49,11 +45,11 @@ button {
 </head>
 <body>
 
-<h2>Milk Agency Sales Sheet</h2>
+<h2>Milk Excel WebApp (Inline Edit)</h2>
 
-<button id="addRowBtn">+ Add New Entry</button>
+<button class="addBtn" onclick="addRow()">+ Add Row</button>
 
-<table id="dataTable">
+<table id="sheet">
   <thead>
     <tr>
       <th>Name</th>
@@ -67,176 +63,170 @@ button {
       <th>FM1L</th>
       <th>SM1L</th>
       <th>Total Litres</th>
-      <th>Total Amt</th>
+      <th>Total Amount</th>
       <th>Paid</th>
       <th>Due</th>
-      <th>Edit</th>
+      <th>Edit / Save</th>
       <th>Delete</th>
     </tr>
   </thead>
-  <tbody></tbody>
+  <tbody id="body"></tbody>
 </table>
 
 <div class="totalBox">
   <h3>Daily Totals</h3>
-  <p>Total TM: <span id="totalTM">0</span> L</p>
-  <p>Total S Milk: <span id="totalSMilk">0</span> L</p>
-  <p>Total S Curd: <span id="totalSCurd">0</span> L</p>
-  <p>Total B Curd: <span id="totalBCurd">0</span> L</p>
-  <p>Total H500: <span id="totalH500">0</span> L</p>
-  <p>Total FM: <span id="totalFM">0</span> L</p>
-  <p>Total FM1L: <span id="totalFM1L">0</span> L</p>
-  <p>Total SM1L: <span id="totalSM1L">0</span> L</p>
-  <h3>Total Money Received: ₹<span id="totalMoney">0</span></h3>
+  <p>Total TM: <span id="tTM">0</span> L</p>
+  <p>Total S Milk: <span id="tSM">0</span> L</p>
+  <p>Total S Curd: <span id="tSC">0</span> L</p>
+  <p>Total B Curd: <span id="tBC">0</span> L</p>
+  <p>Total H500: <span id="tH5">0</span> L</p>
+  <p>Total FM: <span id="tFM">0</span> L</p>
+  <p>Total FM1L: <span id="tFM1">0</span> L</p>
+  <p>Total SM1L: <span id="tSM1">0</span> L</p>
+  <h3>Total Money Received: ₹<span id="tMoney">0</span></h3>
 </div>
 
 <script>
 
 // Prices
-const prices = {
-  tm: 56,
-  smilk: 45,
-  scurd: 45,
-  bcurd: 68,
-  h500: 86,
-  fm: 77,
-  fm1l: 73,
-  sm1l: 66
-};
+const P = { tm:56, sm:45, sc:45, bc:68, h5:86, fm:77, fm1:73, sm1:66 };
 
-let data = JSON.parse(localStorage.getItem("milkData") || "[]");
+let data = JSON.parse(localStorage.getItem("MILKDATA") || "[]");
 
-// Render everything
-function renderTable() {
-  const tbody = document.querySelector("#dataTable tbody");
-  tbody.innerHTML = "";
+function saveData() {
+  localStorage.setItem("MILKDATA", JSON.stringify(data));
+}
 
-  let totals = {
-    tm:0, smilk:0, scurd:0, bcurd:0, h500:0, fm:0, fm1l:0, sm1l:0,
-    money:0
-  };
+function addRow() {
+  data.push({
+    name:"", mobile:"",
+    tm:0, sm:0, sc:0, bc:0, h5:0, fm:0, fm1:0, sm1:0,
+    paid:0
+  });
+  render();
+}
 
-  data.forEach((row, index) => {
+function render() {
+  const body = document.getElementById("body");
+  body.innerHTML = "";
 
-    // Calculate totals
-    let litres =
-      row.tm + row.smilk + row.scurd + row.bcurd + row.h500 + row.fm + row.fm1l + row.sm1l;
+  let totals = { tm:0, sm:0, sc:0, bc:0, h5:0, fm:0, fm1:0, sm1:0, money:0 };
 
-    let amount =
-      row.tm * prices.tm +
-      row.smilk * prices.smilk +
-      row.scurd * prices.scurd +
-      row.bcurd * prices.bcurd +
-      row.h500 * prices.h500 +
-      row.fm * prices.fm +
-      row.fm1l * prices.fm1l +
-      row.sm1l * prices.sm1l;
+  data.forEach((r, i)=>{
+    let litres = r.tm+r.sm+r.sc+r.bc+r.h5+r.fm+r.fm1+r.sm1;
+    let amt =
+      r.tm*P.tm + r.sm*P.sm + r.sc*P.sc + r.bc*P.bc + r.h5*P.h5 +
+      r.fm*P.fm + r.fm1*P.fm1 + r.sm1*P.sm1;
+    let due = amt - r.paid;
 
-    let due = amount - row.paid;
+    totals.tm += r.tm;
+    totals.sm += r.sm;
+    totals.sc += r.sc;
+    totals.bc += r.bc;
+    totals.h5 += r.h5;
+    totals.fm += r.fm;
+    totals.fm1 += r.fm1;
+    totals.sm1 += r.sm1;
+    totals.money += r.paid;
 
-    // Add to total calculation
-    totals.tm += row.tm;
-    totals.smilk += row.smilk;
-    totals.scurd += row.scurd;
-    totals.bcurd += row.bcurd;
-    totals.h500 += row.h500;
-    totals.fm += row.fm;
-    totals.fm1l += row.fm1l;
-    totals.sm1l += row.sm1l;
-    totals.money += row.paid;
+    const row = document.createElement("tr");
 
-    // Make table row
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${row.name}</td>
-      <td>${row.mobile}</td>
-      <td>${row.tm}</td>
-      <td>${row.smilk}</td>
-      <td>${row.scurd}</td>
-      <td>${row.bcurd}</td>
-      <td>${row.h500}</td>
-      <td>${row.fm}</td>
-      <td>${row.fm1l}</td>
-      <td>${row.sm1l}</td>
-      <td>${litres}</td>
-      <td>₹${amount}</td>
-      <td>₹${row.paid}</td>
-      <td>₹${due}</td>
-      <td><button class="editBtn" onclick="editRow(${index})">Edit</button></td>
-      <td><button class="deleteBtn" onclick="deleteRow(${index})">Delete</button></td>
-    `;
-    tbody.appendChild(tr);
+    if (!r.edit) {
+      row.innerHTML = `
+        <td>${r.name}</td>
+        <td>${r.mobile}</td>
+        <td>${r.tm}</td>
+        <td>${r.sm}</td>
+        <td>${r.sc}</td>
+        <td>${r.bc}</td>
+        <td>${r.h5}</td>
+        <td>${r.fm}</td>
+        <td>${r.fm1}</td>
+        <td>${r.sm1}</td>
+        <td>${litres}</td>
+        <td>₹${amt}</td>
+        <td>${r.paid}</td>
+        <td>₹${due}</td>
+        <td><button class="editBtn" onclick="editRow(${i})">Edit</button></td>
+        <td><button class="deleteBtn" onclick="delRow(${i})">Delete</button></td>
+      `;
+    } else {
+      row.innerHTML = `
+        <td><input value="${r.name}" id="n${i}"></td>
+        <td><input value="${r.mobile}" id="m${i}"></td>
+        <td><input value="${r.tm}" id="tm${i}"></td>
+        <td><input value="${r.sm}" id="sm${i}"></td>
+        <td><input value="${r.sc}" id="sc${i}"></td>
+        <td><input value="${r.bc}" id="bc${i}"></td>
+        <td><input value="${r.h5}" id="h5${i}"></td>
+        <td><input value="${r.fm}" id="fm${i}"></td>
+        <td><input value="${r.fm1}" id="fm1${i}"></td>
+        <td><input value="${r.sm1}" id="sm1${i}"></td>
+        <td>${litres}</td>
+        <td>₹${amt}</td>
+        <td><input value="${r.paid}" id="p${i}"></td>
+        <td>${due}</td>
+        <td>
+          <button class="saveBtn" onclick="saveRow(${i})">Save</button><br>
+          <button class="cancelBtn" onclick="cancelEdit(${i})">Cancel</button>
+        </td>
+        <td><button class="deleteBtn" onclick="delRow(${i})">Delete</button></td>
+      `;
+    }
+
+    body.appendChild(row);
   });
 
-  // Update total section
-  document.getElementById("totalTM").innerText = totals.tm;
-  document.getElementById("totalSMilk").innerText = totals.smilk;
-  document.getElementById("totalSCurd").innerText = totals.scurd;
-  document.getElementById("totalBCurd").innerText = totals.bcurd;
-  document.getElementById("totalH500").innerText = totals.h500;
-  document.getElementById("totalFM").innerText = totals.fm;
-  document.getElementById("totalFM1L").innerText = totals.fm1l;
-  document.getElementById("totalSM1L").innerText = totals.sm1l;
-  document.getElementById("totalMoney").innerText = totals.money;
+  document.getElementById("tTM").innerText = totals.tm;
+  document.getElementById("tSM").innerText = totals.sm;
+  document.getElementById("tSC").innerText = totals.sc;
+  document.getElementById("tBC").innerText = totals.bc;
+  document.getElementById("tH5").innerText = totals.h5;
+  document.getElementById("tFM").innerText = totals.fm;
+  document.getElementById("tFM1").innerText = totals.fm1;
+  document.getElementById("tSM1").innerText = totals.sm1;
+  document.getElementById("tMoney").innerText = totals.money;
 
-  localStorage.setItem("milkData", JSON.stringify(data));
+  saveData();
 }
 
-// Add new row
-document.getElementById("addRowBtn").onclick = () => {
-  const name = prompt("Customer Name:");
-  if (!name) return;
-
-  const mobile = prompt("Mobile No:");
-
-  const row = {
-    name,
-    mobile,
-    tm: 0,
-    smilk: 0,
-    scurd: 0,
-    bcurd: 0,
-    h500: 0,
-    fm: 0,
-    fm1l: 0,
-    sm1l: 0,
-    paid: 0
-  };
-
-  data.push(row);
-  renderTable();
-};
-
-// Edit row
 function editRow(i) {
-  const row = data[i];
-
-  row.name = prompt("Name:", row.name) || row.name;
-  row.mobile = prompt("Mobile:", row.mobile) || row.mobile;
-
-  row.tm = Number(prompt("TM litres:", row.tm));
-  row.smilk = Number(prompt("S Milk litres:", row.smilk));
-  row.scurd = Number(prompt("S Curd litres:", row.scurd));
-  row.bcurd = Number(prompt("B Curd litres:", row.bcurd));
-  row.h500 = Number(prompt("H500 litres:", row.h500));
-  row.fm = Number(prompt("FM:", row.fm));
-  row.fm1l = Number(prompt("FM1L:", row.fm1l));
-  row.sm1l = Number(prompt("SM1L:", row.sm1l));
-
-  row.paid = Number(prompt("Paid Amount:", row.paid));
-
-  renderTable();
+  data[i].edit = true;
+  render();
 }
 
-// Delete row
-function deleteRow(i) {
-  if (confirm("Delete this entry?")) {
-    data.splice(i, 1);
-    renderTable();
+function cancelEdit(i) {
+  data[i].edit = false;
+  render();
+}
+
+function saveRow(i) {
+  const r = data[i];
+  r.name = document.getElementById("n"+i).value;
+  r.mobile = document.getElementById("m"+i).value;
+  r.tm = Number(document.getElementById("tm"+i).value);
+  r.sm = Number(document.getElementById("sm"+i).value);
+  r.sc = Number(document.getElementById("sc"+i).value);
+  r.bc = Number(document.getElementById("bc"+i).value);
+  r.h5 = Number(document.getElementById("h5"+i).value);
+  r.fm = Number(document.getElementById("fm"+i).value);
+  r.fm1 = Number(document.getElementById("fm1"+i).value);
+  r.sm1 = Number(document.getElementById("sm1"+i).value);
+  r.paid = Number(document.getElementById("p"+i).value);
+
+  r.edit = false;
+  render();
+}
+
+function delRow(i) {
+  if (confirm("Delete this row?")) {
+    data.splice(i,1);
+    render();
   }
 }
 
-renderTable();
+render();
+
 </script>
 
 </body>
