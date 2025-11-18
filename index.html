@@ -22,7 +22,15 @@
       padding: 6px;
       text-align: center;
     }
-    th { background: #f0f0f0; }
+    th {
+      background: #f0f0f0;
+    }
+    th .priceHint {
+      display: block;
+      font-size: 11px;
+      color: #555;
+      margin-top: 2px;
+    }
     td input {
       width: 100%;
       box-sizing: border-box;
@@ -40,14 +48,27 @@
       gap: 2px;
       align-items: center;
     }
+    .cellStack span {
+      font-size: 11px;
+      color: #666;
+    }
+
     .controls {
       margin-bottom: 10px;
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
+      align-items: center;
     }
-    .addBtn { background: #16a34a; color: #fff; padding: 6px 10px; border-radius: 4px; }
-    .pdfBtn { background: #6b21a8; color: #fff; padding: 6px 10px; border-radius: 4px; }
+    .controls button {
+      padding: 6px 10px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .addBtn { background: #16a34a; color: #fff; }
+    .pdfBtn { background: #6b21a8; color: #fff; }
     .editBtn { background: #0ea5e9; color: #fff; padding: 4px 8px; }
     .saveBtn { background: #22c55e; color: #fff; padding: 4px 8px; }
     .cancelBtn { background: #f59e0b; color: #fff; padding: 4px 8px; }
@@ -58,6 +79,8 @@
       margin-top: 14px;
       padding: 12px;
       border-radius: 6px;
+      font-size: 14px;
+      line-height: 1.4;
     }
 
     @media print {
@@ -81,28 +104,52 @@
 </div>
 
 <table id="sheet">
-<thead>
-<tr>
-  <th>Name</th>
-  <th>Mobile</th>
-  <th>TM (₹56)</th>
-  <th>S Milk (₹45)</th>
-  <th>S Curd (₹45)</th>
-  <th>B Curd (₹68)</th>
-  <th>H500 (₹86)</th>
-  <th>FM (₹77)</th>
-  <th>FM1L (₹73)</th>
-  <th>SM1L (₹66)</th>
-  <th>Total Litres</th>
-  <th>Total Amount</th>
-  <th>Paid</th>
-  <th>Due</th>
-  <th>Edit / Save</th>
-  <th>Delete</th>
-</tr>
-</thead>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Mobile</th>
+      <th>
+        TM
+        <span class="priceHint">₹56/L</span>
+      </th>
+      <th>
+        S Milk
+        <span class="priceHint">₹45/L</span>
+      </th>
+      <th>
+        S Curd
+        <span class="priceHint">₹45/L</span>
+      </th>
+      <th>
+        B Curd
+        <span class="priceHint">₹68/L</span>
+      </th>
+      <th>
+        H500
+        <span class="priceHint">₹86/L</span>
+      </th>
+      <th>
+        FM
+        <span class="priceHint">₹77/L</span>
+      </th>
+      <th>
+        FM1L
+        <span class="priceHint">₹73/L</span>
+      </th>
+      <th>
+        SM1L
+        <span class="priceHint">₹66/L</span>
+      </th>
+      <th>Total Litres</th>
+      <th>Total Amount</th>
+      <th>Paid</th>
+      <th>Due</th>
+      <th>Edit / Save</th>
+      <th>Delete</th>
+    </tr>
+  </thead>
 
-<tbody id="body"></tbody>
+  <tbody id="body"></tbody>
 </table>
 
 <div class="totalBox">
@@ -119,412 +166,395 @@
 </div>
 
 <script>
+  const BASE_PRICES = {
+    tm: 56,
+    sMilk: 45,
+    sCurd: 45,
+    bCurd: 68,
+    h500: 86,
+    fm: 77,
+    fm1l: 73,
+    sm1l: 66
+  };
 
-let ignoreDateChange = false;
-const BASE_PRICES = {
-  tm: 56,
-  sMilk: 45,
-  sCurd: 45,
-  bCurd: 68,
-  h500: 86,
-  fm: 77,
-  fm1l: 73,
-  sm1l: 66
-};
+  let currentDateStr = null;
+  let rows = [];
 
-let currentDateStr = null;
-let rows = [];
-
-// Unique key per date
-function storageKey(dateStr) {
-  return "milkSheet_" + dateStr;
-}
-
-// Calculate row totals
-function computeRowTotals(row) {
-  const tmL = parseFloat(row.tmL) || 0;
-  const sMilkL = parseFloat(row.sMilkL) || 0;
-  const sCurdL = parseFloat(row.sCurdL) || 0;
-  const bCurdL = parseFloat(row.bCurdL) || 0;
-  const h500L = parseFloat(row.h500L) || 0;
-  const fmL = parseFloat(row.fmL) || 0;
-  const fm1lL = parseFloat(row.fm1lL) || 0;
-  const sm1lL = parseFloat(row.sm1lL) || 0;
-
-  const tmP = parseFloat(row.tmPrice) || BASE_PRICES.tm;
-  const sMilkP = parseFloat(row.sMilkPrice) || BASE_PRICES.sMilk;
-  const sCurdP = parseFloat(row.sCurdPrice) || BASE_PRICES.sCurd;
-  const bCurdP = parseFloat(row.bCurdPrice) || BASE_PRICES.bCurd;
-  const h500P = parseFloat(row.h500Price) || BASE_PRICES.h500;
-  const fmP = parseFloat(row.fmPrice) || BASE_PRICES.fm;
-  const fm1lP = parseFloat(row.fm1lPrice) || BASE_PRICES.fm1l;
-  const sm1lP = parseFloat(row.sm1lPrice) || BASE_PRICES.sm1l;
-
-  const totalLitres =
-    tmL + sMilkL + sCurdL + bCurdL + h500L + fmL + fm1lL + sm1lL;
-
-  const amount =
-    tmL * tmP +
-    sMilkL * sMilkP +
-    sCurdL * sCurdP +
-    bCurdL * bCurdP +
-    h500L * h500P +
-    fmL * fmP +
-    fm1lL * fm1lP +
-    sm1lL * sm1lP;
-
-  const paid = parseFloat(row.paid) || 0;
-  const prevDue = parseFloat(row.prevDue) || 0;
-
-  const due = prevDue + amount - paid;
-
-  return { totalLitres, amount, due };
-}
-
-// Save current day
-function saveCurrentDate() {
-  if (!currentDateStr) return;
-  localStorage.setItem(storageKey(currentDateStr), JSON.stringify(rows));
-}
-
-// Load a date's data
-function loadDate(dateStr) {
-  currentDateStr = dateStr;
-  const key = storageKey(dateStr);
-  const stored = localStorage.getItem(key);
-
-  if (stored) {
-    rows = JSON.parse(stored);
-  } else {
-    rows = buildFromPrevious(dateStr);
+  function storageKey(dateStr) {
+    return "milkSheet_" + dateStr;
   }
 
-  render();
-}
+  function computeRowTotals(row) {
+    const tmL    = parseFloat(row.tmL)    || 0;
+    const sMilkL = parseFloat(row.sMilkL) || 0;
+    const sCurdL = parseFloat(row.sCurdL) || 0;
+    const bCurdL = parseFloat(row.bCurdL) || 0;
+    const h500L  = parseFloat(row.h500L)  || 0;
+    const fmL    = parseFloat(row.fmL)    || 0;
+    const fm1lL  = parseFloat(row.fm1lL)  || 0;
+    const sm1lL  = parseFloat(row.sm1lL)  || 0;
 
-// Carry forward previous day's dues
-function buildFromPrevious(dateStr) {
-  const prefix = "milkSheet_";
-  const keys = Object.keys(localStorage).filter(k => k.startsWith(prefix));
+    const tmP    = parseFloat(row.tmPrice)    || BASE_PRICES.tm;
+    const sMilkP = parseFloat(row.sMilkPrice) || BASE_PRICES.sMilk;
+    const sCurdP = parseFloat(row.sCurdPrice) || BASE_PRICES.sCurd;
+    const bCurdP = parseFloat(row.bCurdPrice) || BASE_PRICES.bCurd;
+    const h500P  = parseFloat(row.h500Price)  || BASE_PRICES.h500;
+    const fmP    = parseFloat(row.fmPrice)    || BASE_PRICES.fm;
+    const fm1lP  = parseFloat(row.fm1lPrice)  || BASE_PRICES.fm1l;
+    const sm1lP  = parseFloat(row.sm1lPrice)  || BASE_PRICES.sm1l;
 
-  if (keys.length === 0) return [];
+    const totalLitres =
+      tmL + sMilkL + sCurdL + bCurdL + h500L + fmL + fm1lL + sm1lL;
 
-  const dates = keys
-    .map(k => k.replace(prefix, ""))
-    .filter(d => d < dateStr)
-    .sort();
+    const amount =
+      tmL    * tmP    +
+      sMilkL * sMilkP +
+      sCurdL * sCurdP +
+      bCurdL * bCurdP +
+      h500L  * h500P  +
+      fmL    * fmP    +
+      fm1lL  * fm1lP  +
+      sm1lL  * sm1lP;
 
-  if (dates.length === 0) return [];
+    const paid    = parseFloat(row.paid)    || 0;
+    const prevDue = parseFloat(row.prevDue) || 0;
 
-  const prev = dates[dates.length - 1];
-  const prevRows = JSON.parse(localStorage.getItem(storageKey(prev)) || "[]");
+    const due = prevDue + amount - paid;
 
-  return prevRows.map(r => {
-    const totals = computeRowTotals(r);
+    return { totalLitres, amount, due };
+  }
 
-    return {
-      name: r.name || "",
-      mobile: r.mobile || "",
-      tmL: "",
-      tmPrice: r.tmPrice || BASE_PRICES.tm,
-      sMilkL: "",
-      sMilkPrice: r.sMilkPrice || BASE_PRICES.sMilk,
-      sCurdL: "",
-      sCurdPrice: r.sCurdPrice || BASE_PRICES.sCurd,
-      bCurdL: "",
-      bCurdPrice: r.bCurdPrice || BASE_PRICES.bCurd,
-      h500L: "",
-      h500Price: r.h500Price || BASE_PRICES.h500,
-      fmL: "",
-      fmPrice: r.fmPrice || BASE_PRICES.fm,
-      fm1lL: "",
-      fm1lPrice: r.fm1lPrice || BASE_PRICES.fm1l,
-      sm1lL: "",
-      sm1lPrice: r.sm1lPrice || BASE_PRICES.sm1l,
-      paid: "",
-      prevDue: totals.due,
-      edit: false
-    };
-  });
-}
+  function saveCurrentDate() {
+    if (!currentDateStr) return;
+    localStorage.setItem(storageKey(currentDateStr), JSON.stringify(rows));
+  }
 
-// FIXED: Add customer (no clearing anymore)
-function addRow() {
-  ignoreDateChange = true;
+  function loadDate(dateStr) {
+    currentDateStr = dateStr;
+    const key = storageKey(dateStr);
+    const stored = localStorage.getItem(key);
 
-  rows.push({
-    name: "",
-    mobile: "",
-    tmL: "",
-    tmPrice: BASE_PRICES.tm,
-    sMilkL: "",
-    sMilkPrice: BASE_PRICES.sMilk,
-    sCurdL: "",
-    sCurdPrice: BASE_PRICES.sCurd,
-    bCurdL: "",
-    bCurdPrice: BASE_PRICES.bCurd,
-    h500L: "",
-    h500Price: BASE_PRICES.h500,
-    fmL: "",
-    fmPrice: BASE_PRICES.fm,
-    fm1lL: "",
-    fm1lPrice: BASE_PRICES.fm1l,
-    sm1lL: "",
-    sm1lPrice: BASE_PRICES.sm1l,
-    paid: "",
-    prevDue: "",
-    edit: true
-  });
-
-  render();
-}
-
-function editRow(i) { rows[i].edit = true; render(); }
-function cancelEdit(i) { rows[i].edit = false; render(); }
-
-function deleteRow(i) {
-  if (confirm("Delete this customer?")) {
-    rows.splice(i, 1);
+    if (stored) {
+      rows = JSON.parse(stored);
+    } else {
+      rows = buildFromPrevious(dateStr);
+    }
     render();
   }
-}
 
-function saveRow(i) {
-  const r = rows[i];
+  function buildFromPrevious(dateStr) {
+    const prefix = "milkSheet_";
+    const keys = Object.keys(localStorage).filter(k => k.startsWith(prefix));
 
-  r.name = document.getElementById("name_" + i).value.trim();
-  r.mobile = document.getElementById("mobile_" + i).value.trim();
+    if (keys.length === 0) return [];
 
-  r.tmL = document.getElementById("tmL_" + i).value;
-  r.tmPrice = document.getElementById("tmP_" + i).value;
+    const dates = keys
+      .map(k => k.replace(prefix, ""))
+      .filter(d => d < dateStr)
+      .sort();
 
-  r.sMilkL = document.getElementById("sMilkL_" + i).value;
-  r.sMilkPrice = document.getElementById("sMilkP_" + i).value;
+    if (dates.length === 0) return [];
 
-  r.sCurdL = document.getElementById("sCurdL_" + i).value;
-  r.sCurdPrice = document.getElementById("sCurdP_" + i).value;
+    const prev = dates[dates.length - 1];
+    const prevRows = JSON.parse(localStorage.getItem(storageKey(prev)) || "[]");
 
-  r.bCurdL = document.getElementById("bCurdL_" + i).value;
-  r.bCurdPrice = document.getElementById("bCurdP_" + i).value;
+    return prevRows.map(r => {
+      const totals = computeRowTotals(r);
+      return {
+        name: r.name || "",
+        mobile: r.mobile || "",
+        tmL: "",
+        tmPrice: r.tmPrice || BASE_PRICES.tm,
+        sMilkL: "",
+        sMilkPrice: r.sMilkPrice || BASE_PRICES.sMilk,
+        sCurdL: "",
+        sCurdPrice: r.sCurdPrice || BASE_PRICES.sCurd,
+        bCurdL: "",
+        bCurdPrice: r.bCurdPrice || BASE_PRICES.bCurd,
+        h500L: "",
+        h500Price: r.h500Price || BASE_PRICES.h500,
+        fmL: "",
+        fmPrice: r.fmPrice || BASE_PRICES.fm,
+        fm1lL: "",
+        fm1lPrice: r.fm1lPrice || BASE_PRICES.fm1l,
+        sm1lL: "",
+        sm1lPrice: r.sm1lPrice || BASE_PRICES.sm1l,
+        paid: "",
+        prevDue: totals.due,
+        edit: false
+      };
+    });
+  }
 
-  r.h500L = document.getElementById("h500L_" + i).value;
-  r.h500Price = document.getElementById("h500P_" + i).value;
+  function addRow() {
+    rows.push({
+      name: "",
+      mobile: "",
+      tmL: "",
+      tmPrice: BASE_PRICES.tm,
+      sMilkL: "",
+      sMilkPrice: BASE_PRICES.sMilk,
+      sCurdL: "",
+      sCurdPrice: BASE_PRICES.sCurd,
+      bCurdL: "",
+      bCurdPrice: BASE_PRICES.bCurd,
+      h500L: "",
+      h500Price: BASE_PRICES.h500,
+      fmL: "",
+      fmPrice: BASE_PRICES.fm,
+      fm1lL: "",
+      fm1lPrice: BASE_PRICES.fm1l,
+      sm1lL: "",
+      sm1lPrice: BASE_PRICES.sm1l,
+      paid: "",
+      prevDue: "",
+      edit: true
+    });
+    render();
+  }
 
-  r.fmL = document.getElementById("fmL_" + i).value;
-  r.fmPrice = document.getElementById("fmP_" + i).value;
+  function editRow(i) {
+    rows[i].edit = true;
+    render();
+  }
 
-  r.fm1lL = document.getElementById("fm1lL_" + i).value;
-  r.fm1lPrice = document.getElementById("fm1lP_" + i).value;
+  function cancelEdit(i) {
+    rows[i].edit = false;
+    render();
+  }
 
-  r.sm1lL = document.getElementById("sm1lL_" + i).value;
-  r.sm1lPrice = document.getElementById("sm1lP_" + i).value;
-
-  r.paid = document.getElementById("paid_" + i).value;
-
-  r.edit = false;
-
-  render();
-}
-
-function render() {
-  const tbody = document.getElementById("body");
-  tbody.innerHTML = "";
-
-  let tTM = 0, tSM = 0, tSC = 0, tBC = 0, tH5 = 0, tFM = 0, tFM1 = 0, tSM1 = 0;
-  let totalLitresSold = 0;
-  let totalMoney = 0;
-
-  rows.forEach((r, i) => {
-    const { totalLitres, amount, due } = computeRowTotals(r);
-
-    tTM += parseFloat(r.tmL) || 0;
-    tSM += parseFloat(r.sMilkL) || 0;
-    tSC += parseFloat(r.sCurdL) || 0;
-    tBC += parseFloat(r.bCurdL) || 0;
-    tH5 += parseFloat(r.h500L) || 0;
-    tFM += parseFloat(r.fmL) || 0;
-    tFM1 += parseFloat(r.fm1lL) || 0;
-    tSM1 += parseFloat(r.sm1lL) || 0;
-
-    totalLitresSold += totalLitres;
-    totalMoney += parseFloat(r.paid) || 0;
-
-    const tr = document.createElement("tr");
-
-    if (!r.edit) {
-      // DISPLAY MODE
-      tr.innerHTML = `
-        <td>${r.name || ""}</td>
-        <td>${r.mobile || ""}</td>
-
-        <td>${r.tmL || ""} L @ ₹${r.tmPrice || BASE_PRICES.tm}</td>
-        <td>${r.sMilkL || ""} L @ ₹${r.sMilkPrice || BASE_PRICES.sMilk}</td>
-        <td>${r.sCurdL || ""} L @ ₹${r.sCurdPrice || BASE_PRICES.sCurd}</td>
-        <td>${r.bCurdL || ""} L @ ₹${r.bCurdPrice || BASE_PRICES.bCurd}</td>
-        <td>${r.h500L || ""} L @ ₹${r.h500Price || BASE_PRICES.h500}</td>
-        <td>${r.fmL || ""} L @ ₹${r.fmPrice || BASE_PRICES.fm}</td>
-        <td>${r.fm1lL || ""} L @ ₹${r.fm1lPrice || BASE_PRICES.fm1l}</td>
-        <td>${r.sm1lL || ""} L @ ₹${r.sm1lPrice || BASE_PRICES.sm1l}</td>
-
-        <td>${totalLitres}</td>
-        <td>₹${amount.toFixed(0)}</td>
-        <td>${r.paid || ""}</td>
-        <td>₹${due.toFixed(0)}</td>
-
-        <td>
-          <button class="editBtn no-print" onclick="editRow(${i})">Edit</button>
-        </td>
-        <td>
-          <button class="deleteBtn no-print" onclick="deleteRow(${i})">Delete</button>
-        </td>
-      `;
-    } else {
-      // EDIT MODE
-      tr.innerHTML = `
-        <td class="nameCol">
-          <input id="name_${i}" value="${r.name || ''}">
-        </td>
-        <td class="mobileCol">
-          <input id="mobile_${i}" value="${r.mobile || ''}">
-        </td>
-
-        <td>
-          <div class="cellStack">
-            <input class="qtyInput" id="tmL_${i}" value="${r.tmL || ''}" placeholder="L">
-            <span>L</span>
-            <input class="priceInput" id="tmP_${i}" value="${r.tmPrice || ''}" placeholder="₹">
-            <span>₹/L</span>
-          </div>
-        </td>
-
-        <td>
-          <div class="cellStack">
-            <input class="qtyInput" id="sMilkL_${i}" value="${r.sMilkL || ''}" placeholder="L">
-            <span>L</span>
-            <input class="priceInput" id="sMilkP_${i}" value="${r.sMilkPrice || ''}" placeholder="₹">
-            <span>₹/L</span>
-          </div>
-        </td>
-
-        <td>
-          <div class="cellStack">
-            <input class="qtyInput" id="sCurdL_${i}" value="${r.sCurdL || ''}" placeholder="L">
-            <span>L</span>
-            <input class="priceInput" id="sCurdP_${i}" value="${r.sCurdPrice || ''}" placeholder="₹">
-            <span>₹/L</span>
-          </div>
-        </td>
-
-        <td>
-          <div class="cellStack">
-            <input class="qtyInput" id="bCurdL_${i}" value="${r.bCurdL || ''}" placeholder="L">
-            <span>L</span>
-            <input class="priceInput" id="bCurdP_${i}" value="${r.bCurdPrice || ''}" placeholder="₹">
-            <span>₹/L</span>
-          </div>
-        </td>
-
-        <td>
-          <div class="cellStack">
-            <input class="qtyInput" id="h500L_${i}" value="${r.h500L || ''}" placeholder="L">
-            <span>L</span>
-            <input class="priceInput" id="h500P_${i}" value="${r.h500Price || ''}" placeholder="₹">
-            <span>₹/L</span>
-          </div>
-        </td>
-
-        <td>
-          <div class="cellStack">
-            <input class="qtyInput" id="fmL_${i}" value="${r.fmL || ''}" placeholder="L">
-            <span>L</span>
-            <input class="priceInput" id="fmP_${i}" value="${r.fmPrice || ''}" placeholder="₹">
-            <span>₹/L</span>
-          </div>
-        </td>
-
-        <td>
-          <div class="cellStack">
-            <input class="qtyInput" id="fm1lL_${i}" value="${r.fm1lL || ''}" placeholder="L">
-            <span>L</span>
-            <input class="priceInput" id="fm1lP_${i}" value="${r.fm1lPrice || ''}" placeholder="₹">
-            <span>₹/L</span>
-          </div>
-        </td>
-
-        <td>
-          <div class="cellStack">
-            <input class="qtyInput" id="sm1lL_${i}" value="${r.sm1lL || ''}" placeholder="L">
-            <span>L</span>
-            <input class="priceInput" id="sm1lP_${i}" value="${r.sm1lPrice || ''}" placeholder="₹">
-            <span>₹/L</span>
-          </div>
-        </td>
-
-        <td>${totalLitres}</td>
-        <td>₹${amount.toFixed(0)}</td>
-
-        <td>
-          <input id="paid_${i}" value="${r.paid || ''}" placeholder="₹">
-        </td>
-
-        <td>₹${due.toFixed(0)}</td>
-
-        <td>
-          <button class="saveBtn no-print" onclick="saveRow(${i})">Save</button>
-          <button class="cancelBtn no-print" onclick="cancelEdit(${i})">Cancel</button>
-        </td>
-        <td>
-          <button class="deleteBtn no-print" onclick="deleteRow(${i})">Delete</button>
-        </td>
-      `;
+  function deleteRow(i) {
+    if (confirm("Delete this customer?")) {
+      rows.splice(i, 1);
+      render();
     }
+  }
 
-    tbody.appendChild(tr);
+  function saveRow(i) {
+    const r = rows[i];
+
+    r.name   = document.getElementById("name_" + i).value.trim();
+    r.mobile = document.getElementById("mobile_" + i).value.trim();
+
+    r.tmL      = document.getElementById("tmL_" + i).value;
+    r.tmPrice  = document.getElementById("tmP_" + i).value;
+
+    r.sMilkL      = document.getElementById("sMilkL_" + i).value;
+    r.sMilkPrice  = document.getElementById("sMilkP_" + i).value;
+
+    r.sCurdL      = document.getElementById("sCurdL_" + i).value;
+    r.sCurdPrice  = document.getElementById("sCurdP_" + i).value;
+
+    r.bCurdL      = document.getElementById("bCurdL_" + i).value;
+    r.bCurdPrice  = document.getElementById("bCurdP_" + i).value;
+
+    r.h500L      = document.getElementById("h500L_" + i).value;
+    r.h500Price  = document.getElementById("h500P_" + i).value;
+
+    r.fmL      = document.getElementById("fmL_" + i).value;
+    r.fmPrice  = document.getElementById("fmP_" + i).value;
+
+    r.fm1lL      = document.getElementById("fm1lL_" + i).value;
+    r.fm1lPrice  = document.getElementById("fm1lP_" + i).value;
+
+    r.sm1lL      = document.getElementById("sm1lL_" + i).value;
+    r.sm1lPrice  = document.getElementById("sm1lP_" + i).value;
+
+    r.paid = document.getElementById("paid_" + i).value;
+
+    r.edit = false;
+    render();
+  }
+
+  function render() {
+    const tbody = document.getElementById("body");
+    tbody.innerHTML = "";
+
+    let tTM = 0, tSM = 0, tSC = 0, tBC = 0, tH5 = 0, tFM = 0, tFM1 = 0, tSM1 = 0;
+    let totalLitresSold = 0;
+    let totalMoney = 0;
+
+    rows.forEach((r, i) => {
+      const { totalLitres, amount, due } = computeRowTotals(r);
+
+      tTM  += parseFloat(r.tmL)    || 0;
+      tSM  += parseFloat(r.sMilkL) || 0;
+      tSC  += parseFloat(r.sCurdL) || 0;
+      tBC  += parseFloat(r.bCurdL) || 0;
+      tH5  += parseFloat(r.h500L)  || 0;
+      tFM  += parseFloat(r.fmL)    || 0;
+      tFM1 += parseFloat(r.fm1lL)  || 0;
+      tSM1 += parseFloat(r.sm1lL)  || 0;
+
+      totalLitresSold += totalLitres;
+      totalMoney += parseFloat(r.paid) || 0;
+
+      const tr = document.createElement("tr");
+
+      if (!r.edit) {
+        tr.innerHTML = `
+          <td>${r.name || ""}</td>
+          <td>${r.mobile || ""}</td>
+
+          <td>${r.tmL    ? r.tmL    + " L @ ₹" + (r.tmPrice    || BASE_PRICES.tm)       : ""}</td>
+          <td>${r.sMilkL ? r.sMilkL + " L @ ₹" + (r.sMilkPrice || BASE_PRICES.sMilk)    : ""}</td>
+          <td>${r.sCurdL ? r.sCurdL + " L @ ₹" + (r.sCurdPrice || BASE_PRICES.sCurd)    : ""}</td>
+          <td>${r.bCurdL ? r.bCurdL + " L @ ₹" + (r.bCurdPrice || BASE_PRICES.bCurd)    : ""}</td>
+          <td>${r.h500L  ? r.h500L  + " L @ ₹" + (r.h500Price  || BASE_PRICES.h500)     : ""}</td>
+          <td>${r.fmL    ? r.fmL    + " L @ ₹" + (r.fmPrice    || BASE_PRICES.fm)       : ""}</td>
+          <td>${r.fm1lL  ? r.fm1lL  + " L @ ₹" + (r.fm1lPrice  || BASE_PRICES.fm1l)     : ""}</td>
+          <td>${r.sm1lL  ? r.sm1lL  + " L @ ₹" + (r.sm1lPrice  || BASE_PRICES.sm1l)     : ""}</td>
+
+          <td>${totalLitres}</td>
+          <td>₹${amount.toFixed(0)}</td>
+          <td>${r.paid || ""}</td>
+          <td>₹${due.toFixed(0)}</td>
+
+          <td>
+            <button class="editBtn no-print" onclick="editRow(${i})">Edit</button>
+          </td>
+          <td>
+            <button class="deleteBtn no-print" onclick="deleteRow(${i})">Delete</button>
+          </td>
+        `;
+      } else {
+        tr.innerHTML = `
+          <td class="nameCol">
+            <input id="name_${i}" value="${r.name || ''}" placeholder="Name">
+          </td>
+          <td class="mobileCol">
+            <input id="mobile_${i}" value="${r.mobile || ''}" placeholder="Mobile">
+          </td>
+
+          <td>
+            <div class="cellStack">
+              <input class="qtyInput" id="tmL_${i}" value="${r.tmL || ''}" placeholder="L">
+              <span>L</span>
+              <input class="priceInput" id="tmP_${i}" value="${r.tmPrice || ''}" placeholder="₹">
+              <span>₹/L</span>
+            </div>
+          </td>
+
+          <td>
+            <div class="cellStack">
+              <input class="qtyInput" id="sMilkL_${i}" value="${r.sMilkL || ''}" placeholder="L">
+              <span>L</span>
+              <input class="priceInput" id="sMilkP_${i}" value="${r.sMilkPrice || ''}" placeholder="₹">
+              <span>₹/L</span>
+            </div>
+          </td>
+
+          <td>
+            <div class="cellStack">
+              <input class="qtyInput" id="sCurdL_${i}" value="${r.sCurdL || ''}" placeholder="L">
+              <span>L</span>
+              <input class="priceInput" id="sCurdP_${i}" value="${r.sCurdPrice || ''}" placeholder="₹">
+              <span>₹/L</span>
+            </div>
+          </td>
+
+          <td>
+            <div class="cellStack">
+              <input class="qtyInput" id="bCurdL_${i}" value="${r.bCurdL || ''}" placeholder="L">
+              <span>L</span>
+              <input class="priceInput" id="bCurdP_${i}" value="${r.bCurdPrice || ''}" placeholder="₹">
+              <span>₹/L</span>
+            </div>
+          </td>
+
+          <td>
+            <div class="cellStack">
+              <input class="qtyInput" id="h500L_${i}" value="${r.h500L || ''}" placeholder="L">
+              <span>L</span>
+              <input class="priceInput" id="h500P_${i}" value="${r.h500Price || ''}" placeholder="₹">
+              <span>₹/L</span>
+            </div>
+          </td>
+
+          <td>
+            <div class="cellStack">
+              <input class="qtyInput" id="fmL_${i}" value="${r.fmL || ''}" placeholder="L">
+              <span>L</span>
+              <input class="priceInput" id="fmP_${i}" value="${r.fmPrice || ''}" placeholder="₹">
+              <span>₹/L</span>
+            </div>
+          </td>
+
+          <td>
+            <div class="cellStack">
+              <input class="qtyInput" id="fm1lL_${i}" value="${r.fm1lL || ''}" placeholder="L">
+              <span>L</span>
+              <input class="priceInput" id="fm1lP_${i}" value="${r.fm1lPrice || ''}" placeholder="₹">
+              <span>₹/L</span>
+            </div>
+          </td>
+
+          <td>
+            <div class="cellStack">
+              <input class="qtyInput" id="sm1lL_${i}" value="${r.sm1lL || ''}" placeholder="L">
+              <span>L</span>
+              <input class="priceInput" id="sm1lP_${i}" value="${r.sm1lPrice || ''}" placeholder="₹">
+              <span>₹/L</span>
+            </div>
+          </td>
+
+          <td>${totalLitres}</td>
+          <td>₹${amount.toFixed(0)}</td>
+
+          <td>
+            <input id="paid_${i}" value="${r.paid || ''}" placeholder="₹">
+          </td>
+
+          <td>₹${due.toFixed(0)}</td>
+
+          <td>
+            <button class="saveBtn no-print" onclick="saveRow(${i})">Save</button>
+            <button class="cancelBtn no-print" onclick="cancelEdit(${i})">Cancel</button>
+          </td>
+          <td>
+            <button class="deleteBtn no-print" onclick="deleteRow(${i})">Delete</button>
+          </td>
+        `;
+      }
+
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById("tTM").innerText  = tTM;
+    document.getElementById("tSM").innerText  = tSM;
+    document.getElementById("tSC").innerText  = tSC;
+    document.getElementById("tBC").innerText  = tBC;
+    document.getElementById("tH5").innerText  = tH5;
+    document.getElementById("tFM").innerText  = tFM;
+    document.getElementById("tFM1").innerText = tFM1;
+    document.getElementById("tSM1").innerText = tSM1;
+
+    document.getElementById("tLIT").innerText =
+      totalLitresSold.toFixed(2).replace(/\.00$/, "");
+    document.getElementById("tMoney").innerText = totalMoney.toFixed(0);
+
+    saveCurrentDate();
+  }
+
+  document.getElementById("addRowBtn").addEventListener("click", addRow);
+  document.getElementById("pdfBtn").addEventListener("click", () => window.print());
+
+  document.getElementById("datePicker").addEventListener("change", (e) => {
+    const val = e.target.value;
+    if (!val) return;
+    loadDate(val);
   });
 
-  document.getElementById("tTM").innerText = tTM;
-  document.getElementById("tSM").innerText = tSM;
-  document.getElementById("tSC").innerText = tSC;
-  document.getElementById("tBC").innerText = tBC;
-  document.getElementById("tH5").innerText = tH5;
-  document.getElementById("tFM").innerText = tFM;
-  document.getElementById("tFM1").innerText = tFM1;
-  document.getElementById("tSM1").innerText = tSM1;
-
-  document.getElementById("tLIT").innerText =
-    totalLitresSold.toFixed(2).replace(/\.00$/, "");
-  document.getElementById("tMoney").innerText = totalMoney.toFixed(0);
-
-  saveCurrentDate();
-}
-
-// Button & date listeners
-document.getElementById("addRowBtn").addEventListener("click", addRow);
-
-document.getElementById("pdfBtn").addEventListener("click", () => {
-  window.print();
-});
-
-document.getElementById("datePicker").addEventListener("change", (e) => {
-  const val = e.target.value;
-  if (!val) return;
-  if (ignoreDateChange) {
-    ignoreDateChange = false;
-    return;
-  }
-  loadDate(val);
-});
-
-// Init: load today
-(function init() {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  const today = `${yyyy}-${mm}-${dd}`;
-  document.getElementById("datePicker").value = today;
-  loadDate(today);
-})();
+  (function init() {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const today = `${yyyy}-${mm}-${dd}`;
+    const dp = document.getElementById("datePicker");
+    dp.value = today;
+    loadDate(today);
+  })();
 </script>
 
 </body>
