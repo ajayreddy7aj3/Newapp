@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Milk Agency Excel WebApp</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body {
+  font-family: Arial, sans-serif;
+  padding: 20px;
+  background: #f4f4f4;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+  background: white;
+}
+th, td {
+  padding: 8px;
+  border: 1px solid #ccc;
+  text-align: center;
+}
+input {
+  width: 80px;
+}
+button {
+  padding: 5px 10px;
+  margin: 2px;
+  cursor: pointer;
+}
+#addRowBtn {
+  padding: 10px 15px;
+  background: green;
+  color: white;
+  border: none;
+  margin-bottom: 10px;
+  border-radius: 5px;
+}
+.deleteBtn { background: red; color: white; border: none; }
+.editBtn { background: blue; color: white; border: none; }
+.totalBox {
+  background: white;
+  padding: 10px;
+  margin-top: 20px;
+  border-radius: 6px;
+}
+</style>
+</head>
+<body>
+
+<h2>Milk Agency Sales Sheet</h2>
+
+<button id="addRowBtn">+ Add New Entry</button>
+
+<table id="dataTable">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Mobile</th>
+      <th>TM</th>
+      <th>S Milk</th>
+      <th>S Curd</th>
+      <th>B Curd</th>
+      <th>H500</th>
+      <th>FM</th>
+      <th>FM1L</th>
+      <th>SM1L</th>
+      <th>Total Litres</th>
+      <th>Total Amt</th>
+      <th>Paid</th>
+      <th>Due</th>
+      <th>Edit</th>
+      <th>Delete</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<div class="totalBox">
+  <h3>Daily Totals</h3>
+  <p>Total TM: <span id="totalTM">0</span> L</p>
+  <p>Total S Milk: <span id="totalSMilk">0</span> L</p>
+  <p>Total S Curd: <span id="totalSCurd">0</span> L</p>
+  <p>Total B Curd: <span id="totalBCurd">0</span> L</p>
+  <p>Total H500: <span id="totalH500">0</span> L</p>
+  <p>Total FM: <span id="totalFM">0</span> L</p>
+  <p>Total FM1L: <span id="totalFM1L">0</span> L</p>
+  <p>Total SM1L: <span id="totalSM1L">0</span> L</p>
+  <h3>Total Money Received: ₹<span id="totalMoney">0</span></h3>
+</div>
+
+<script>
+
+// Prices
+const prices = {
+  tm: 56,
+  smilk: 45,
+  scurd: 45,
+  bcurd: 68,
+  h500: 86,
+  fm: 77,
+  fm1l: 73,
+  sm1l: 66
+};
+
+let data = JSON.parse(localStorage.getItem("milkData") || "[]");
+
+// Render everything
+function renderTable() {
+  const tbody = document.querySelector("#dataTable tbody");
+  tbody.innerHTML = "";
+
+  let totals = {
+    tm:0, smilk:0, scurd:0, bcurd:0, h500:0, fm:0, fm1l:0, sm1l:0,
+    money:0
+  };
+
+  data.forEach((row, index) => {
+
+    // Calculate totals
+    let litres =
+      row.tm + row.smilk + row.scurd + row.bcurd + row.h500 + row.fm + row.fm1l + row.sm1l;
+
+    let amount =
+      row.tm * prices.tm +
+      row.smilk * prices.smilk +
+      row.scurd * prices.scurd +
+      row.bcurd * prices.bcurd +
+      row.h500 * prices.h500 +
+      row.fm * prices.fm +
+      row.fm1l * prices.fm1l +
+      row.sm1l * prices.sm1l;
+
+    let due = amount - row.paid;
+
+    // Add to total calculation
+    totals.tm += row.tm;
+    totals.smilk += row.smilk;
+    totals.scurd += row.scurd;
+    totals.bcurd += row.bcurd;
+    totals.h500 += row.h500;
+    totals.fm += row.fm;
+    totals.fm1l += row.fm1l;
+    totals.sm1l += row.sm1l;
+    totals.money += row.paid;
+
+    // Make table row
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${row.name}</td>
+      <td>${row.mobile}</td>
+      <td>${row.tm}</td>
+      <td>${row.smilk}</td>
+      <td>${row.scurd}</td>
+      <td>${row.bcurd}</td>
+      <td>${row.h500}</td>
+      <td>${row.fm}</td>
+      <td>${row.fm1l}</td>
+      <td>${row.sm1l}</td>
+      <td>${litres}</td>
+      <td>₹${amount}</td>
+      <td>₹${row.paid}</td>
+      <td>₹${due}</td>
+      <td><button class="editBtn" onclick="editRow(${index})">Edit</button></td>
+      <td><button class="deleteBtn" onclick="deleteRow(${index})">Delete</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // Update total section
+  document.getElementById("totalTM").innerText = totals.tm;
+  document.getElementById("totalSMilk").innerText = totals.smilk;
+  document.getElementById("totalSCurd").innerText = totals.scurd;
+  document.getElementById("totalBCurd").innerText = totals.bcurd;
+  document.getElementById("totalH500").innerText = totals.h500;
+  document.getElementById("totalFM").innerText = totals.fm;
+  document.getElementById("totalFM1L").innerText = totals.fm1l;
+  document.getElementById("totalSM1L").innerText = totals.sm1l;
+  document.getElementById("totalMoney").innerText = totals.money;
+
+  localStorage.setItem("milkData", JSON.stringify(data));
+}
+
+// Add new row
+document.getElementById("addRowBtn").onclick = () => {
+  const name = prompt("Customer Name:");
+  if (!name) return;
+
+  const mobile = prompt("Mobile No:");
+
+  const row = {
+    name,
+    mobile,
+    tm: 0,
+    smilk: 0,
+    scurd: 0,
+    bcurd: 0,
+    h500: 0,
+    fm: 0,
+    fm1l: 0,
+    sm1l: 0,
+    paid: 0
+  };
+
+  data.push(row);
+  renderTable();
+};
+
+// Edit row
+function editRow(i) {
+  const row = data[i];
+
+  row.name = prompt("Name:", row.name) || row.name;
+  row.mobile = prompt("Mobile:", row.mobile) || row.mobile;
+
+  row.tm = Number(prompt("TM litres:", row.tm));
+  row.smilk = Number(prompt("S Milk litres:", row.smilk));
+  row.scurd = Number(prompt("S Curd litres:", row.scurd));
+  row.bcurd = Number(prompt("B Curd litres:", row.bcurd));
+  row.h500 = Number(prompt("H500 litres:", row.h500));
+  row.fm = Number(prompt("FM:", row.fm));
+  row.fm1l = Number(prompt("FM1L:", row.fm1l));
+  row.sm1l = Number(prompt("SM1L:", row.sm1l));
+
+  row.paid = Number(prompt("Paid Amount:", row.paid));
+
+  renderTable();
+}
+
+// Delete row
+function deleteRow(i) {
+  if (confirm("Delete this entry?")) {
+    data.splice(i, 1);
+    renderTable();
+  }
+}
+
+renderTable();
+</script>
+
+</body>
+</html>
